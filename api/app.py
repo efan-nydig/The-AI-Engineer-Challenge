@@ -27,8 +27,13 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     developer_message: str  # Message from the developer/system
     user_message: str      # Message from the user
-    model: Optional[str] = "gpt-4.1-mini"  # Optional model selection with default
+    model: Optional[str] = "gpt-4.1-nano"  # Optional model selection with default
     api_key: str          # OpenAI API key for authentication
+
+# Define the data model for model testing
+class ModelTestRequest(BaseModel):
+    api_key: str
+    model: str
 
 # Define the main chat endpoint that handles POST requests
 @app.post("/api/chat")
@@ -65,6 +70,25 @@ async def chat(request: ChatRequest):
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
+
+# Define a model testing endpoint
+@app.post("/api/test-model")
+async def test_model(request: ModelTestRequest):
+    try:
+        # Initialize OpenAI client with the provided API key
+        client = OpenAI(api_key=request.api_key)
+        
+        # Try a minimal completion request to test model access
+        response = client.chat.completions.create(
+            model=request.model,
+            messages=[{"role": "user", "content": "Hi"}],
+            max_tokens=1
+        )
+        
+        return {"available": True}
+    except Exception as e:
+        error_msg = str(e)
+        return {"available": False, "error": error_msg}
 
 # Entry point for running the application directly
 if __name__ == "__main__":
