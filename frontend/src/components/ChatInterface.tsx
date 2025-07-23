@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Key, Settings, MessageSquare, CheckCircle, XCircle, Loader } from 'lucide-react';
 import { ChatMessage, ChatState } from '@/types/chat';
-import { streamChat, testModelAccess } from '@/lib/api';
+import { streamChat, testModelAccess, getAvailableModels } from '@/lib/api';
 import Message from './Message';
 
 const ChatInterface: React.FC = () => {
@@ -65,11 +65,37 @@ const ChatInterface: React.FC = () => {
     }
   };
 
-  // Test all models when API key changes
+  // Get available models when API key changes
   useEffect(() => {
     if (apiKey.trim()) {
-      const models = ['gpt-4.1-nano', 'gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini'];
-      models.forEach(testModel);
+      // Reset status and show loading
+      setModelStatus({});
+      setAvailableModels([]);
+      
+      // Get available models from backend
+      getAvailableModels(apiKey)
+        .then(result => {
+          if (result.available_models && result.available_models.length > 0) {
+            setAvailableModels(result.available_models);
+            
+            // Set all returned models as available
+            const statusMap: Record<string, 'available' | 'unavailable' | 'checking'> = {};
+            result.available_models.forEach(model => {
+              statusMap[model] = 'available';
+            });
+            setModelStatus(statusMap);
+          } else {
+            // No models available
+            setAvailableModels([]);
+            setModelStatus({});
+          }
+        })
+        .catch((error) => {
+          // Error fetching models
+          console.error('Error fetching available models:', error);
+          setAvailableModels([]);
+          setModelStatus({});
+        });
     } else {
       setModelStatus({});
       setAvailableModels([]);
@@ -82,8 +108,8 @@ const ChatInterface: React.FC = () => {
       const currentModelAvailable = availableModels.includes(model);
       if (!currentModelAvailable) {
         // Prefer models in this order
-        const preferredOrder = ['gpt-4.1-nano', 'gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini'];
-        const firstAvailable = preferredOrder.find(m => availableModels.includes(m));
+        const preferredOrder = ['gpt-4o-mini', 'gpt-3.5-turbo', 'gpt-4.1-nano', 'gpt-4', 'gpt-4-turbo', 'gpt-4o'];
+        const firstAvailable = preferredOrder.find(m => availableModels.includes(m)) || availableModels[0];
         if (firstAvailable) {
           setModel(firstAvailable);
         }
@@ -225,29 +251,24 @@ const ChatInterface: React.FC = () => {
               onChange={(e) => setModel(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              {[
-                { value: 'gpt-4.1-nano', label: 'GPT-4.1 Nano' },
-                { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-                { value: 'gpt-4', label: 'GPT-4' },
-                { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-                { value: 'gpt-4o', label: 'GPT-4o' },
-                { value: 'gpt-4o-mini', label: 'GPT-4o Mini' }
-              ].map(({ value, label }) => {
-                const status = modelStatus[value];
-                const isAvailable = status === 'available';
-                const isChecking = status === 'checking';
-                const isUnavailable = status === 'unavailable';
+              {availableModels.length === 0 && (
+                <option value="" disabled>
+                  {apiKey ? 'No available models' : 'Enter API key to see models'}
+                </option>
+              )}
+              {availableModels.map((modelValue) => {
+                // Create a display label from the model value
+                const label = modelValue.replace(/^gpt-/, 'GPT-')
+                  .replace('3.5-turbo', '3.5 Turbo')
+                  .replace('4.1-nano', '4.1 Nano')
+                  .replace('4-turbo', '4 Turbo')
+                  .replace('4o-mini', '4o Mini')
+                  .replace('4o', '4o')
+                  .replace('4', '4');
                 
                 return (
-                  <option 
-                    key={value} 
-                    value={value}
-                    disabled={isUnavailable}
-                  >
-                    {label}
-                    {isChecking ? ' (Testing...)' : 
-                     isAvailable ? ' ✓' : 
-                     isUnavailable ? ' ✗' : ''}
+                  <option key={modelValue} value={modelValue}>
+                    {label} ✓
                   </option>
                 );
               })}
@@ -257,17 +278,28 @@ const ChatInterface: React.FC = () => {
             {apiKey && (
               <div className="mt-2 space-y-1">
                 <div className="text-xs text-gray-600">Model Availability:</div>
-                {[
-                  { value: 'gpt-4.1-nano', label: 'GPT-4.1 Nano' },
-                  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-                  { value: 'gpt-4', label: 'GPT-4' },
-                  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-                  { value: 'gpt-4o', label: 'GPT-4o' },
-                  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' }
-                ].map(({ value, label }) => {
-                  const status = modelStatus[value];
+                {availableModels.length === 0 && Object.keys(modelStatus).length === 0 && (
+                  <div className="text-xs text-gray-500">Enter API key to check available models...</div>
+                )}
+                {availableModels.length === 0 && Object.keys(modelStatus).length > 0 && (
+                  <div className="flex items-center gap-1 text-xs">
+                    <XCircle className="w-3 h-3 text-red-500" />
+                    <span className="text-red-500">No available models</span>
+                  </div>
+                )}
+                {availableModels.map((modelValue) => {
+                  const status = modelStatus[modelValue];
+                  // Create a display label from the model value
+                  const label = modelValue.replace(/^gpt-/, 'GPT-')
+                    .replace('3.5-turbo', '3.5 Turbo')
+                    .replace('4.1-nano', '4.1 Nano')
+                    .replace('4-turbo', '4 Turbo')
+                    .replace('4o-mini', '4o Mini')
+                    .replace('4o', '4o')
+                    .replace('4', '4');
+                  
                   return (
-                    <div key={value} className="flex items-center justify-between text-xs">
+                    <div key={modelValue} className="flex items-center justify-between text-xs">
                       <span>{label}</span>
                       <span className="flex items-center gap-1">
                         {status === 'checking' && (

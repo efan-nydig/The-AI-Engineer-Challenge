@@ -35,6 +35,10 @@ class ModelTestRequest(BaseModel):
     api_key: str
     model: str
 
+# Define the data model for getting available models
+class AvailableModelsRequest(BaseModel):
+    api_key: str
+
 # Define the main chat endpoint that handles POST requests
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
@@ -70,6 +74,46 @@ async def chat(request: ChatRequest):
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
+
+# Define an endpoint to get available models for an API key
+@app.post("/api/available-models")
+async def get_available_models(request: AvailableModelsRequest):
+    try:
+        # Initialize OpenAI client with the provided API key
+        client = OpenAI(api_key=request.api_key)
+        
+        # Get list of available models directly from OpenAI API
+        models_response = client.models.list()
+        
+        # Filter for chat completion models (GPT models)
+        chat_models = []
+        for model in models_response.data:
+            model_id = model.id
+            # Filter for GPT models that support chat completions
+            if any(keyword in model_id.lower() for keyword in ['gpt', 'davinci', 'curie', 'babbage', 'ada']):
+                chat_models.append(model_id)
+        
+        # Sort models by preference (GPT-4 models first, then GPT-3.5, etc.)
+        def model_priority(model_name):
+            if 'gpt-4o' in model_name:
+                return 1
+            elif 'gpt-4' in model_name:
+                return 2
+            elif 'gpt-3.5' in model_name:
+                return 3
+            elif 'davinci' in model_name:
+                return 4
+            else:
+                return 5
+        
+        sorted_models = sorted(chat_models, key=model_priority)
+        
+        print(f"Found {len(sorted_models)} available models: {sorted_models}")  # Debug output
+        
+        return {"available_models": sorted_models}
+    except Exception as e:
+        print(f"Error fetching models: {str(e)}")  # Debug output
+        return {"available_models": [], "error": str(e)}
 
 # Define a model testing endpoint
 @app.post("/api/test-model")
