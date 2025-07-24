@@ -2,19 +2,14 @@
     "version": 2,
     "builds": [
       { "src": "frontend/package.json", "use": "@vercel/next" },
-      { 
-        "src": "api/app.py",
-        "use": "@vercel/python"
-      }
+      { "src": "api/test.py", "use": "@vercel/python" },
+      { "src": "api/available-models.py", "use": "@vercel/python" },
+      { "src": "api/chat.py", "use": "@vercel/python" }
     ],
     "routes": [
-      { 
-        "src": "/api/(.*)", 
-        "dest": "api/app.py"
-      },
-      { 
-        "src": "/(.*)", 
-        "dest": "frontend/$1"
-      }
+      { "src": "/api/test", "dest": "api/test.py" },
+      { "src": "/api/available-models", "dest": "api/available-models.py" },
+      { "src": "/api/chat", "dest": "api/chat.py" },
+      { "src": "/(.*)", "dest": "frontend/$1" }
     ]
-  } 
+} 

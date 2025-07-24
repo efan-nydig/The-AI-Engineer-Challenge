@@ -75,6 +75,11 @@ async def chat(request: ChatRequest):
 async def health_check():
     return {"status": "ok"}
 
+# Simple test endpoint to verify backend deployment
+@app.get("/api/test")
+async def test_endpoint():
+    return {"message": "Backend is working!", "timestamp": "2025-07-24"}
+
 # Define an endpoint to debug API key format
 @app.post("/api/debug-key")
 async def debug_api_key(request: AvailableModelsRequest):
@@ -154,7 +159,7 @@ async def test_model(request: ModelTestRequest):
         error_msg = str(e)
         return {"available": False, "error": error_msg}
 
-# Entry point for running the application directly
+# Entry point for running the application directly (for local development)
 if __name__ == "__main__":
     import uvicorn
     # Start the server on all network interfaces (0.0.0.0) on port 8000
