@@ -67,14 +67,24 @@ const ChatInterface: React.FC = () => {
 
   // Get available models when API key changes
   useEffect(() => {
+    console.log('API Key changed:', { 
+      length: apiKey.length, 
+      trimmedLength: apiKey.trim().length,
+      startsWithSk: apiKey.trim().startsWith('sk-'),
+      hasWhitespace: /\s/.test(apiKey)
+    });
+    
     if (apiKey.trim()) {
       // Reset status and show loading
       setModelStatus({});
       setAvailableModels([]);
       
+      console.log('Fetching available models...');
+      
       // Get available models from backend
-      getAvailableModels(apiKey)
+      getAvailableModels(apiKey.trim())
         .then(result => {
+          console.log('Models fetch result:', result);
           if (result.available_models && result.available_models.length > 0) {
             setAvailableModels(result.available_models);
             
