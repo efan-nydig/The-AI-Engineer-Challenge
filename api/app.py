@@ -90,6 +90,9 @@ async def debug_api_key(request: AvailableModelsRequest):
 @app.post("/api/available-models")
 async def get_available_models(request: AvailableModelsRequest):
     try:
+        # Debug logging
+        print(f"Received API key - Length: {len(request.api_key)}, Starts with: {request.api_key[:20]}, Ends with: {request.api_key[-20:]}")
+        
         # Initialize OpenAI client with the provided API key
         client = OpenAI(api_key=request.api_key)
         
