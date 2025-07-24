@@ -75,6 +75,17 @@ async def chat(request: ChatRequest):
 async def health_check():
     return {"status": "ok"}
 
+# Define an endpoint to debug API key format
+@app.post("/api/debug-key")
+async def debug_api_key(request: AvailableModelsRequest):
+    return {
+        "api_key_length": len(request.api_key),
+        "api_key_starts_with": request.api_key[:10] if len(request.api_key) > 10 else request.api_key,
+        "api_key_ends_with": request.api_key[-10:] if len(request.api_key) > 10 else request.api_key,
+        "has_whitespace": any(c.isspace() for c in request.api_key),
+        "api_key_repr": repr(request.api_key)
+    }
+
 # Define an endpoint to get available models for an API key
 @app.post("/api/available-models")
 async def get_available_models(request: AvailableModelsRequest):
@@ -93,18 +104,24 @@ async def get_available_models(request: AvailableModelsRequest):
             if any(keyword in model_id.lower() for keyword in ['gpt', 'davinci', 'curie', 'babbage', 'ada']):
                 chat_models.append(model_id)
         
-        # Sort models by preference (GPT-4 models first, then GPT-3.5, etc.)
+        # Sort models by preference (GPT-4.1 models first, then GPT-4, etc.)
         def model_priority(model_name):
-            if 'gpt-4o' in model_name:
+            if 'gpt-4.1-nano' in model_name:
                 return 1
-            elif 'gpt-4' in model_name:
+            elif 'gpt-4.1-mini' in model_name:
                 return 2
-            elif 'gpt-3.5' in model_name:
+            elif 'gpt-4.1' in model_name:
                 return 3
-            elif 'davinci' in model_name:
+            elif 'gpt-4o' in model_name:
                 return 4
-            else:
+            elif 'gpt-4' in model_name:
                 return 5
+            elif 'gpt-3.5' in model_name:
+                return 6
+            elif 'davinci' in model_name:
+                return 7
+            else:
+                return 8
         
         sorted_models = sorted(chat_models, key=model_priority)
         
