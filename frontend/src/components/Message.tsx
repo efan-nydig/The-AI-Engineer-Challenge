@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Bot, Settings } from 'lucide-react';
 import { ChatMessage } from '@/types/chat';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface MessageProps {
   message: ChatMessage;
@@ -39,8 +41,10 @@ const Message: React.FC<MessageProps> = ({ message }) => {
             {isClient ? message.timestamp.toLocaleTimeString() : ''}
           </span>
         </div>
-        <div className="text-gray-800 whitespace-pre-wrap">
-          {message.content}
+        <div className="text-gray-800 markdown-content">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {message.content}
+          </ReactMarkdown>
         </div>
       </div>
     </div>
